@@ -1,0 +1,50 @@
+/*
+ * Name:   sixth.drl
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.sixth;
+
+import com.polarsparc.sixth.model.*;
+
+global org.slf4j.Logger log;
+
+rule "Find_Preferred_Supplier_For_P1"
+no-loop true
+    when
+        $prd: Product(name == "P1")
+    then
+        log.info("{}: Product P1 {} first preference Supplier S1", drools.getRule().getName(), $prd.getId());
+
+        modify($prd){incCounter()}
+        insert(new Supplier(SupplierType.PRIMARY, "S1", "P1"));
+end
+
+rule "Find_Preferred_Supplier_For_P2"
+salience 5
+lock-on-active true
+    when
+        $prd: Product(name == "P2")
+    then
+        log.info("{}: Product P2 {} first preference Supplier S2", drools.getRule().getName(), $prd.getId());
+
+        modify($prd){incCounter()}
+        insert(new Supplier(SupplierType.PRIMARY, "S2", "P2"));
+end
+
+rule "Display_Primary_Supplier"
+    when
+        $prd: Product($id: id, $name: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, product == $name)
+    then
+        log.info("{}: Primary Supplier {} for Product {} {}",
+            drools.getRule().getName(),
+            $sup.getName(),
+            $name,
+            $id);
+
+        delete($sup);
+        delete($prd);
+end

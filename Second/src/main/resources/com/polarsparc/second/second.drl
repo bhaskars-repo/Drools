@@ -1,0 +1,20 @@
+/*
+ * Name:   second.drl
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.second;
+
+import com.polarsparc.second.model.Second;
+import org.slf4j.Logger;
+
+global org.slf4j.Logger log;
+
+rule "Rule One"
+    when
+        $s: Second()
+    then
+        log.info("Second - supplier: {}, product: {}, price: {}", $s.getSupplier(), $s.getProduct(), $s.getPrice());
+end

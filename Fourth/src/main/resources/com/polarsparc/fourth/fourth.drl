@@ -1,0 +1,78 @@
+/*
+ * Name:   fourth.drl
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.fourth;
+
+import com.polarsparc.fourth.model.*;
+import org.slf4j.Logger;
+import java.util.Collection;
+import java.util.Comparator;
+
+global org.slf4j.Logger log;
+
+rule "Find_Best_Supplier"
+    when
+        $suppliers: Collection(size > 0)
+        $best: Supplier() from $suppliers
+        exists Supplier($best.price < price) from $suppliers
+    then
+        log.info("{}: Supplier {} is preferred for Product {}",
+            drools.getRule().getName(),
+            $best.getSupplier(),
+            $best.getProduct());
+
+        delete($suppliers);
+        insert($best);
+end
+
+rule "Compute_Threshold"
+    when
+        $best: Supplier()
+        $invt: Inventory()
+        $thr: Threshold()
+        $pm: Promotion()
+    then
+        double pct = ($invt.getPrice() - $best.getPrice()) / $invt.getPrice();
+
+        log.info("{}: Threshold: {}, Computed: {}",
+            drools.getRule().getName(),
+            $thr.getThreshold(),
+            String.format("%.3f", pct));
+
+        delete($invt);
+        modify($pm){
+            setComputed(pct),
+            setSupplier($best)
+        }
+        delete($best);
+end
+
+rule "Compute_Discount"
+    when
+        $thr: Threshold()
+        $pm: Promotion(computed > $thr.getThreshold())
+    then
+        log.info("{}: Threshold: {}, Computed: {} -> Discount eligible",
+            drools.getRule().getName(),
+            $thr.getThreshold(),
+            String.format("%.3f", $pm.getComputed()));
+
+        delete($thr);
+        modify($pm){
+            setDiscount($pm.getComputed()/2.0)
+        }
+end
+
+rule "Display_Discount"
+    when
+        $p: Promotion(discount > 0.0)
+    then
+        log.info("{}: Product {} allows a Discount of {}%",
+            drools.getRule().getName(),
+            $p.getSupplier().getProduct(),
+            String.format("%.2f", $p.getDiscount() * 100.0));
+end

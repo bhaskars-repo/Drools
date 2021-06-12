@@ -1,0 +1,159 @@
+/*
+ * Name:   fifth.drl
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.fifth;
+
+import com.polarsparc.fifth.model.*;
+import com.polarsparc.fifth.util.QuoteHelper;
+import org.slf4j.Logger;
+import java.util.Collection;
+import java.util.Comparator
+import com.polarsparc.fifth.util.QuoteHelper;
+
+global org.slf4j.Logger log;
+
+rule "Find_Preferred_Supplier"
+    when
+        Product($name: name)
+    then
+        log.info("{}: Product {} first preference Supplier S1",
+            drools.getRule().getName(),
+            $name);
+
+        insert(new Supplier(SupplierType.PRIMARY, "S1", $name));
+end
+
+rule "Get_Primary_Supplier_Quote"
+    when
+        Product($name: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, product == $name)
+        $inv: Inventory(product == $name)
+    then
+        Quote quote = QuoteHelper.generateQuote($sup.getName(), $name, $inv.getPrice());
+
+        log.info("{}: Quote {} from Supplier {} for Product {}",
+            drools.getRule().getName(),
+            String.format("%.2f", quote.getPrice()),
+            $sup.getName(),
+            $name);
+
+        insert(quote);
+end
+
+rule "Verify_Primary_Quote"
+    when
+        Product($prod: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, $supp: name, product == $prod)
+        Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) > 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Supplier {} for Product {} REJECTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        delete($sup);
+        delete($quo);
+
+        insert(new Supplier(SupplierType.SECONDARY, "S2", $prod));
+end
+
+rule "Accept_Primary_Quote"
+    when
+        $prd: Product($prod: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, $supp: name, product == $prod)
+        $inv: Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) <= 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Primary Supplier {} for Product {} ACCEPTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        insert(new Order($supp, $prod, $qprc));
+
+        delete($prd);
+        delete($sup);
+        delete($inv);
+        delete($quo);
+end
+
+rule "Get_Secondary_Supplier_Quote"
+    when
+        Product($name: name)
+        $sup: Supplier(type == SupplierType.SECONDARY, product == $name)
+        $inv: Inventory(product == $name)
+    then
+        Quote quote = QuoteHelper.generateQuote($sup.getName(), $name, $inv.getPrice());
+
+        log.info("{}: Quote {} from Secondary Supplier {} for Product {}",
+            drools.getRule().getName(),
+            String.format("%.2f", quote.getPrice()),
+            $sup.getName(),
+            $name);
+
+        insert(quote);
+end
+
+rule "Verify_Secondary_Quote"
+    when
+        $prd: Product($prod: name)
+        $sup: Supplier(type == SupplierType.SECONDARY, $supp: name, product == $prod)
+        $inv: Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) > 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Secondary Supplier {} for Product {} REJECTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        delete($prd);
+        delete($sup);
+        delete($inv);
+        delete($quo);
+
+        log.info("{}: Product exception processing !!!", drools.getRule().getName());
+end
+
+rule "Accept_Secondary_Quote"
+    when
+        $prd: Product($prod: name)
+        $sup: Supplier(type == SupplierType.SECONDARY, $supp: name, product == $prod)
+        $inv: Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) <= 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Secondary Supplier {} for Product {} ACCEPTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        insert(new Order($supp, $prod, $qprc));
+
+        delete($prd);
+        delete($sup);
+        delete($inv);
+        delete($quo);
+end
+
+rule "Display_Supplier_Quote"
+    when
+        $ord: Order()
+    then
+        log.info("{}: CONFIRMED - Order Product {} from Supplier {} for Price {}",
+            drools.getRule().getName(),
+            $ord.getProduct(),
+            $ord.getSupplier(),
+            String.format("%.2f", $ord.getPrice()));
+end

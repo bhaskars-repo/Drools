@@ -1,0 +1,24 @@
+/*
+ * Name:   third_r2.drl
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.third.r2;
+
+import com.polarsparc.third.model.Third;
+import org.slf4j.Logger;
+
+global org.slf4j.Logger log;
+
+rule "Third_R2"
+    when
+        $t: Third()
+    then
+        log.info("{}: Supplier: {}, Product: {}, Price: {}",
+            drools.getRule().getName(),
+            $t.getSupplier(),
+            $t.getProduct(),
+            $t.getPrice());
+end
