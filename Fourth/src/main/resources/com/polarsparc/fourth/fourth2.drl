@@ -10,16 +10,30 @@ package com.polarsparc.fourth;
 import com.polarsparc.fourth.model.*;
 import org.slf4j.Logger;
 import java.util.Collection;
-//import java.util.Iterator;
+import java.util.Iterator;
 import java.util.Comparator;
 
 global org.slf4j.Logger log;
 
+// Another option to find the best price using accumulate
 rule "Find_Best_Supplier"
     when
         $suppliers: Collection(size > 0)
-        $best: Supplier($low: price) from $suppliers
-        not Supplier(price < $low) from $suppliers
+        $best: Supplier() from accumulate(
+            Collection(size > 0),
+            init(Supplier $sup = null; Iterator<Supplier> $it = null;),
+            action(
+                $it = $suppliers.iterator();
+                $sup = $it.next();
+                while ($it.hasNext()) {
+                    Supplier tmp = $it.next();
+                    if ($sup.getPrice() > tmp.getPrice()) {
+                        $sup = tmp;
+                    }
+                }
+            ),
+            result($sup)
+        )
     then
         log.info("{}: Supplier {} is preferred for Product {}",
             drools.getRule().getName(),
